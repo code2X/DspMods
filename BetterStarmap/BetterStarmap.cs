@@ -16,8 +16,8 @@ namespace BetterStarmap
 {
     class DetailsPreview_Impl : BaseFeature<DetailsPreview_Impl>, IFeature
     {
-        private static PlanetData g_HoveredPlanet = null;
-        private static StarData g_HoveredStar = null;
+        private static PlanetData s_HoveredPlanet = null;
+        private static StarData s_HoveredStar = null;
 
         public DetailsPreview_Impl()
         {
@@ -31,24 +31,24 @@ namespace BetterStarmap
 
         static void Reset()
         {
-            g_HoveredStar = (StarData)null;
-            g_HoveredPlanet = (PlanetData)null;
+            s_HoveredStar = (StarData)null;
+            s_HoveredPlanet = (PlanetData)null;
         }
 
         static void SetHover(StarData star)
         {
-            g_HoveredStar = star;
-            g_HoveredPlanet = (PlanetData)null;
+            s_HoveredStar = star;
+            s_HoveredPlanet = (PlanetData)null;
         }
 
         static void SetHover(PlanetData planet)
         {
-            g_HoveredPlanet = planet;
-            g_HoveredStar = (StarData)null;
+            s_HoveredPlanet = planet;
+            s_HoveredStar = (StarData)null;
         }
 
-        static bool IsHoverStar => g_HoveredStar != null;
-        static bool IsHoverPlanet => g_HoveredPlanet != null;
+        static bool IsHoverStar => s_HoveredStar != null;
+        static bool IsHoverPlanet => s_HoveredPlanet != null;
 
         public static void OnMouseHover(UIStarmap __instance)
         {
@@ -74,12 +74,12 @@ namespace BetterStarmap
             }
             else if (IsHoverPlanet)
             {
-                planet = g_HoveredPlanet;
-                g_HoveredStar = (StarData)null;
+                planet = s_HoveredPlanet;
+                s_HoveredStar = (StarData)null;
             }
             else if (planet != null)
             {
-                g_HoveredStar = (StarData)null;
+                s_HoveredStar = (StarData)null;
             }
         }
 
@@ -91,12 +91,12 @@ namespace BetterStarmap
             }
             else if (IsHoverStar)
             {
-                g_HoveredPlanet = (PlanetData)null;
-                star = g_HoveredStar;
+                s_HoveredPlanet = (PlanetData)null;
+                star = s_HoveredStar;
             }
             else if (star != null)
             {
-                g_HoveredPlanet = (PlanetData)null;
+                s_HoveredPlanet = (PlanetData)null;
             }
         }
     }
@@ -360,7 +360,6 @@ namespace BetterStarmap
                     if (__instance.viewStar == star.star)
                         return;
                     __instance.screenCameraController.SetViewTarget((PlanetData)null, star.star, (Player)null, VectorLF3.zero, (double)star.star.physicsRadius * 0.899999976158142 * 0.00025, (double)star.star.physicsRadius * (double)Mathf.Pow(star.star.radius * 0.4f, -0.4f) * 3.0 * 0.00025, true, true);
-
                 }
             }
         }
@@ -378,7 +377,6 @@ namespace BetterStarmap
 
         public static class DetailsPreview
         {
-
             [HarmonyPatch(typeof(UIGame), "SetPlanetDetail")]
             private class Planet
             {
