@@ -16,8 +16,8 @@ namespace BetterStarmap
 {
     class DetailsPreview_Impl : BaseFeature<DetailsPreview_Impl>, IFeature
     {
-        private static PlanetData hoveredPlanet = null;
-        private static StarData hoveredStar = null;
+        private static PlanetData g_HoveredPlanet = null;
+        private static StarData g_HoveredStar = null;
 
         public DetailsPreview_Impl()
         {
@@ -31,24 +31,24 @@ namespace BetterStarmap
 
         static void Reset()
         {
-            hoveredStar = (StarData)null;
-            hoveredPlanet = (PlanetData)null;
+            g_HoveredStar = (StarData)null;
+            g_HoveredPlanet = (PlanetData)null;
         }
 
         static void SetHover(StarData star)
         {
-            hoveredStar = star;
-            hoveredPlanet = (PlanetData)null;
+            g_HoveredStar = star;
+            g_HoveredPlanet = (PlanetData)null;
         }
 
         static void SetHover(PlanetData planet)
         {
-            hoveredPlanet = planet;
-            hoveredStar = (StarData)null;
+            g_HoveredPlanet = planet;
+            g_HoveredStar = (StarData)null;
         }
 
-        static bool IsHoverStar => hoveredStar != null;
-        static bool IsHoverPlanet => hoveredPlanet != null;
+        static bool IsHoverStar => g_HoveredStar != null;
+        static bool IsHoverPlanet => g_HoveredPlanet != null;
 
         public static void OnMouseHover(UIStarmap __instance)
         {
@@ -74,12 +74,12 @@ namespace BetterStarmap
             }
             else if (IsHoverPlanet)
             {
-                planet = hoveredPlanet;
-                hoveredStar = (StarData)null;
+                planet = g_HoveredPlanet;
+                g_HoveredStar = (StarData)null;
             }
             else if (planet != null)
             {
-                hoveredStar = (StarData)null;
+                g_HoveredStar = (StarData)null;
             }
         }
 
@@ -91,12 +91,12 @@ namespace BetterStarmap
             }
             else if (IsHoverStar)
             {
-                hoveredPlanet = (PlanetData)null;
-                star = hoveredStar;
+                g_HoveredPlanet = (PlanetData)null;
+                star = g_HoveredStar;
             }
             else if (star != null)
             {
-                hoveredPlanet = (PlanetData)null;
+                g_HoveredPlanet = (PlanetData)null;
             }
         }
     }
@@ -302,7 +302,7 @@ namespace BetterStarmap
         public const string __NAME__ = "betterstarmap";
         public const string __GUID__ = "0x.plugins.dsp." + __NAME__;
         
-        static bool isStarMapOpened = false;
+        static bool g_IsStarMapOpened = false;
 
         public static ConfigEntry<float> g_DisplayPositionX;
         public static ConfigEntry<float> g_DisplayPositionY;
@@ -333,7 +333,7 @@ namespace BetterStarmap
         
         private void OnGUI()
         {
-            if (isStarMapOpened)
+            if (g_IsStarMapOpened)
             {
                 GUILayout.BeginArea(new Rect(Screen.width * g_DisplayPositionX.Value, Screen.height * g_DisplayPositionY.Value, 200, 300));
 
@@ -370,49 +370,56 @@ namespace BetterStarmap
         {
             private static void Prefix(UIStarmap __instance)
             {
-                isStarMapOpened = false;
+                g_IsStarMapOpened = false;
                 DetailsPreview_Impl.OnStarmapClose();
                 DisplayUnknown_Impl.OnStarmapClose();
             }
         }
 
-        [HarmonyPatch(typeof(UIGame), "SetPlanetDetail")]
-        private class DetailsPreview_Planet
+        public static class DetailsPreview
         {
-            private static void Prefix(UIGame __instance, ref PlanetData planet)
+
+            [HarmonyPatch(typeof(UIGame), "SetPlanetDetail")]
+            private class Planet
             {
-                if (__instance.starmap.isFullOpened)
+                private static void Prefix(UIGame __instance, ref PlanetData planet)
                 {
-                    DetailsPreview_Impl.OnSetPlanetDetail(ref planet);
+                    if (__instance.starmap.isFullOpened)
+                    {
+                        DetailsPreview_Impl.OnSetPlanetDetail(ref planet);
+                    }
+                }
+            }
+
+            [HarmonyPatch(typeof(UIGame), "SetStarDetail")]
+            private class Star
+            {
+                private static void Prefix(UIGame __instance, ref StarData star)
+                {
+                    if (__instance.starmap.isFullOpened)
+                    {
+                        DetailsPreview_Impl.OnSetStarDetail(ref star);
+                    }
+                }
+            }
+
+            [HarmonyPatch(typeof(UIStarmap), "MouseHoverCheck")]
+            private class MouseHoverCheck
+            {
+                public static void Postfix(UIStarmap __instance)
+                {
+                    g_IsStarMapOpened = __instance.isFullOpened;
+                    DetailsPreview_Impl.OnMouseHover(__instance);
                 }
             }
         }
 
-        [HarmonyPatch(typeof(UIGame), "SetStarDetail")]
-        private class DetailsPreview_Star
-        {
-            private static void Prefix(UIGame __instance, ref StarData star)
-            {
-                if (__instance.starmap.isFullOpened)
-                {
-                    DetailsPreview_Impl.OnSetStarDetail(ref star);
-                }
-            }
-        }
-
-        [HarmonyPatch(typeof(UIStarmap), "MouseHoverCheck")]
-        private class MouseHoverCheck
-        {
-            public static void Postfix(UIStarmap __instance)
-            {
-                isStarMapOpened = __instance.isFullOpened;
-                DetailsPreview_Impl.OnMouseHover(__instance);
-            }
-        }
-        
         [HarmonyPatch(typeof(UIStarmapStar), "_OnLateUpdate")]
         private class StarmapStarHighlight
         {
+            /// <summary>
+            /// Star color default to white
+            /// </summary>
             private static void Prefix(UIStarmapStar __instance)
             {
                 Text nameText = Traverse.Create((object)__instance).Field("nameText").GetValue<Text>();
