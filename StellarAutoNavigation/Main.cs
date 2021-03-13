@@ -7,7 +7,7 @@ using HarmonyLib;
 
 namespace AutoNavigate
 {
-    [BepInPlugin(__GUID__, __NAME__, "1.0")]
+    [BepInPlugin(__GUID__, __NAME__, "1.01")]
     public class AutoNavigate : BaseUnityPlugin
     {
         public const string __NAME__ = "StellarAutoNavigation";
@@ -120,9 +120,9 @@ namespace AutoNavigate
                     modeText.rectTransform.anchoredPosition = anchoredPosition;
 
                     if (autoNav.IsCurNavPlanet())
-                        modeText.text = ModText.StellarAutoNavigation;
+                        modeText.text = "星际自动导航".ModText();
                     else if (autoNav.IsCurNavStar())
-                        modeText.text = ModText.GalaxyAutoNavigation;
+                        modeText.text = "星系自动导航".ModText();
 
                     autoNav.modeText = modeText;
                 }
@@ -142,6 +142,9 @@ namespace AutoNavigate
             }
         }
 
+        /// <summary>
+        /// Sail Mode
+        /// </summary>
         [HarmonyPatch(typeof(PlayerMove_Sail), "GameTick")]
         private class SailMode_AutoNavigate
         {
@@ -178,6 +181,9 @@ namespace AutoNavigate
             }
         }
 
+        /// <summary>
+        /// Fly Mode
+        /// </summary>
         [HarmonyPatch(typeof(PlayerMove_Fly), "GameTick")]
         private class FlyMode_TrySwtichToSail
         {
@@ -192,20 +198,18 @@ namespace AutoNavigate
 
                     if (autoNav.DetermineArrive())
                     {
-#if DEBUG
                         ModDebug.Log("FlyModeArrive");
-#endif
                         autoNav.Arrive();
 
                     }
                     else if (
                         __instance.mecha.thrusterLevel < 2)
                     {
-                        autoNav.Arrive(ModText.ThrusterLevelTooLow);
+                        autoNav.Arrive("驱动引擎等级过低".ModText());
                     }
                     else if (__instance.player.mecha.coreEnergy < minAutoNavEnergy.Value)
                     {
-                        autoNav.Arrive(ModText.MechaEnergyTooLow);
+                        autoNav.Arrive("机甲能量过低".ModText());
                     }
                     else
                     {
@@ -221,6 +225,9 @@ namespace AutoNavigate
             }
         }
 
+        /// <summary>
+        /// Walk Mode
+        /// </summary>
         [HarmonyPatch(typeof(PlayerMove_Walk), "UpdateJump")]
         private class WalkMode_TrySwticToFly
         {
@@ -231,19 +238,17 @@ namespace AutoNavigate
                 {
                     if (autoNav.DetermineArrive())
                     {
-#if DEBUG
                         ModDebug.Log("WalkModeArrive");
-#endif
                         autoNav.Arrive();
                     }
                     else if (
                         __instance.mecha.thrusterLevel < 1)
                     {
-                        autoNav.Arrive(ModText.ThrusterLevelTooLow);
+                        autoNav.Arrive("驱动引擎等级过低".ModText());
                     }
                     else if (__instance.player.mecha.coreEnergy < minAutoNavEnergy.Value)
                     {
-                        autoNav.Arrive(ModText.MechaEnergyTooLow);
+                        autoNav.Arrive("机甲能量过低".ModText());
                     }
                     else
                     {
@@ -260,10 +265,10 @@ namespace AutoNavigate
 
         }
 
+
 /// --------------------------
 /// StarmapPin
 /// --------------------------
-
         [HarmonyPatch(typeof(UIStarmap), "OnScreenClick")]
         private class UIStarmapOnMouseClick
         {
@@ -279,6 +284,7 @@ namespace AutoNavigate
                        // ModDebug.Log("InputButton.Right == mouseHoverPlanet");
 
                         SetPlanetPin(__instance);
+
                         if (navPin.target.planet != null)
                             autoNav.target.SetTarget(__instance.mouseHoverPlanet.planet);
                         return;
@@ -295,6 +301,7 @@ namespace AutoNavigate
                         //ModDebug.Log("InputButton.Right == mouseHoverStar");
 
                         SetStarPin(__instance);
+
                         if(navPin.target.star != null)
                             autoNav.target.SetTarget(__instance.mouseHoverStar);
                         return;
@@ -389,7 +396,7 @@ namespace AutoNavigate
         [HarmonyPatch(typeof(UISpaceGuideEntry), "_OnLateUpdate")]
         private class Space_PinStarPlanetColorScale
         {
-            static Vector3 lScale = new Vector3(2.2f, 1.0f, 1.0f);
+            static Vector3 s_lScale = new Vector3(2.2f, 1.0f, 1.0f);
 
             private static void Postfix(UISpaceGuideEntry __instance)
             {
@@ -400,7 +407,7 @@ namespace AutoNavigate
                     __instance.objId == navPin.target.id &&
                     (__instance.guideType == ESpaceGuideType.Star || __instance.guideType == ESpaceGuideType.Planet))
                 {
-                    image.rectTransform.localScale = lScale;
+                    image.rectTransform.localScale = s_lScale;
                     image.color = Color.red;
                     nameText.color = Color.red;
                 }
@@ -416,6 +423,7 @@ namespace AutoNavigate
         [HarmonyPatch(typeof(UIStarmapStar), "_OnLateUpdate")]
         private class Starmap_PinStarColor
         {
+            //Default to white
             private static void Prefix(UIStarmapStar __instance)
             {
                 Text nameText = Traverse.Create((object)__instance).Field("nameText").GetValue<Text>();
@@ -437,6 +445,7 @@ namespace AutoNavigate
         [HarmonyPatch(typeof(UIStarmapPlanet), "_OnLateUpdate")]
         private class Starmap_PinPlanetColor
         {
+            //Default to white
             private static void Prefix(UIStarmapPlanet __instance)
             {
                 Text nameText = Traverse.Create((object)__instance).Field("nameText").GetValue<Text>();
