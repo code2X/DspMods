@@ -7,7 +7,7 @@ using HarmonyLib;
 
 namespace AutoNavigate
 {
-    [BepInPlugin(__GUID__, __NAME__, "1.01")]
+    [BepInPlugin(__GUID__, __NAME__, "1.02")]
     public class AutoNavigate : BaseUnityPlugin
     {
         public const string __NAME__ = "StellarAutoNavigation";
@@ -16,7 +16,6 @@ namespace AutoNavigate
         static public AutoNavigate self;
         private Player player = null;
 
-        public static StarmapNavPin navPin;
         public static AutoStellarNavigation autoNav;
 
         public static bool isHistoryNav = false;
@@ -24,7 +23,6 @@ namespace AutoNavigate
 
         void Start()
         {         
-            navPin = new StarmapNavPin();
             autoNav = new AutoStellarNavigation(GetNavConfig());
 
             self = this;
@@ -60,7 +58,6 @@ namespace AutoNavigate
             public static void ResetMod()
             {
                 isHistoryNav = false;
-                navPin.Reset();
                 autoNav.Reset();
                 autoNav.target.Reset();               
                 self.player = null;
@@ -267,200 +264,24 @@ namespace AutoNavigate
 
 
 /// --------------------------
-/// StarmapPin
+/// Starmap Indicator
 /// --------------------------
-        [HarmonyPatch(typeof(UIStarmap), "OnScreenClick")]
+        [HarmonyPatch(typeof(UIStarmap), "OnCursorFunction3Click")]
         private class UIStarmapOnMouseClick
         {
-            private static void Prefix(UIStarmap __instance, ref BaseEventData evtData)
+            private static void Prefix(UIStarmap __instance)
             {
-                if (!(evtData is PointerEventData pointerEventData) || pointerEventData.button != PointerEventData.InputButton.Left && pointerEventData.button != PointerEventData.InputButton.Right)
-                    return;
-
-                if ((UnityEngine.Object)__instance.mouseHoverPlanet != (UnityEngine.Object)null)
+                PlayerNavigation navigation = GameMain.mainPlayer.navigation;
+                if (__instance.focusPlanet != null &&
+                    navigation.indicatorAstroId != __instance.focusPlanet.planet.id)
                 {
-                    if (pointerEventData.button == PointerEventData.InputButton.Right)
-                    {
-                       // ModDebug.Log("InputButton.Right == mouseHoverPlanet");
-
-                        SetPlanetPin(__instance);
-
-                        if (navPin.target.planet != null)
-                            autoNav.target.SetTarget(__instance.mouseHoverPlanet.planet);
-                        return;
-                    }
-
-                    __instance.OnPlanetClick(__instance.mouseHoverPlanet);
+                    autoNav.target.SetTarget(__instance.focusPlanet.planet);
                 }
-                else
+                else if (__instance.focusStar != null &&
+                    navigation.indicatorAstroId != __instance.focusStar.star.id * 100)
                 {
-                    if (!((UnityEngine.Object)__instance.mouseHoverStar != (UnityEngine.Object)null))
-                        return;
-                    if (pointerEventData.button == PointerEventData.InputButton.Right)
-                    {
-                        //ModDebug.Log("InputButton.Right == mouseHoverStar");
-
-                        SetStarPin(__instance);
-
-                        if(navPin.target.star != null)
-                            autoNav.target.SetTarget(__instance.mouseHoverStar);
-                        return;
-                    }
-
-                    __instance.OnStarClick(__instance.mouseHoverStar);
+                    autoNav.target.SetTarget(__instance.focusStar.star);
                 }
-
-                return;
-            }
-
-            public static void SetPlanetPin(UIStarmap __instance)
-            {
-                navPin.RecoverName();
-                if (__instance.mouseHoverPlanet.planet.id == navPin.target.id)
-                {
-                    //ModDebug.Log("mouseHoverPlanet == navPin.target");                   
-                    navPin.Reset();
-                    autoNav.Arrive();
-                }
-                else
-                {
-                    navPin.SetPin(__instance.mouseHoverPlanet, __instance.mouseHoverPlanet.planet);
-                    StarmapNavPin.SetPlanetName(__instance, navPin.target.name);
-                }
-            }
-
-            
-            public static void SetStarPin(UIStarmap __instance)
-            {
-                void SetName()
-                {
-                    navPin.RecoverName();
-
-                    if (__instance.mouseHoverStar.star.id == navPin.target.id)
-                    {
-                        //ModDebug.Log("mouseHoverStar == navPin.target");                      
-                        navPin.Reset();
-                        autoNav.Arrive();
-                    }
-                    else
-                    {
-                        navPin.SetPin(__instance.mouseHoverStar);            
-                        StarmapNavPin.SetStarName(__instance, navPin.target.name);
-                    }
-                }
-
-                void SetPin()
-                {
-                    GameHistoryData mouseHoverStar_gameHistory = Traverse.Create((object)__instance.mouseHoverStar).Field("gameHistory").GetValue<GameHistoryData>();
-                    UISpaceGuide spaceGuide = UIRoot.instance.uiGame.spaceGuide;
-                    if (spaceGuide != null)
-                    {
-                        if (navPin.isPined == false)
-                        {
-                            if (mouseHoverStar_gameHistory.HasFeatureKey(1001001) ||
-                                mouseHoverStar_gameHistory.HasFeatureKey(1010000 + __instance.mouseHoverStar.star.id))
-                            {
-                                //ModDebug.Log("Star Alread Pinned");
-                                navPin.alreadyPin = true;
-                            }                            
-                            else
-                            {
-                                //ModDebug.Log("Star Alread No Pinned");
-                                navPin.alreadyPin = false;
-                            }                              
-
-                            spaceGuide.SetStarPin(__instance.mouseHoverStar.star.id, true);
-                            navPin.isPined = true;
-                        }
-                        else
-                        {
-                            if (!navPin.alreadyPin)
-                            {
-                                //ModDebug.Log("navPin.alreadyPin == false");
-                                spaceGuide.SetStarPin(navPin.target.id, false);                                
-                            }                              
-
-                            navPin.isPined = false;
-                            navPin.alreadyPin = false;
-                        }
-                    }
-                      
-                }
-
-                SetPin();
-                SetName();                             
-
-            }
-        }
-
-        [HarmonyPatch(typeof(UISpaceGuideEntry), "_OnLateUpdate")]
-        private class Space_PinStarPlanetColorScale
-        {
-            static Vector3 s_lScale = new Vector3(2.2f, 1.0f, 1.0f);
-
-            private static void Postfix(UISpaceGuideEntry __instance)
-            {
-                Image image = Traverse.Create((object)__instance).Field("markIcon").GetValue<Image>();
-                Text nameText = Traverse.Create((object)__instance).Field("nameText").GetValue<Text>();
-
-                if (navPin.target.id != -1 &&
-                    __instance.objId == navPin.target.id &&
-                    (__instance.guideType == ESpaceGuideType.Star || __instance.guideType == ESpaceGuideType.Planet))
-                {
-                    image.rectTransform.localScale = s_lScale;
-                    image.color = Color.red;
-                    nameText.color = Color.red;
-                }
-                else
-                {
-                    image.rectTransform.localScale = Vector3.one;
-                    nameText.color = Color.white;
-                }
-
-            }
-        }
-
-        [HarmonyPatch(typeof(UIStarmapStar), "_OnLateUpdate")]
-        private class Starmap_PinStarColor
-        {
-            //Default to white
-            private static void Prefix(UIStarmapStar __instance)
-            {
-                Text nameText = Traverse.Create((object)__instance).Field("nameText").GetValue<Text>();
-                nameText.color = Color.white;
-            }
-
-            private static void Postfix(UIStarmapStar __instance)
-            {
-                Text nameText = Traverse.Create((object)__instance).Field("nameText").GetValue<Text>();
-
-                if (navPin.target != null && 
-                    navPin.target.id != -1 && 
-                    __instance.star.id == navPin.target.id
-                    )
-                    nameText.color = Color.red;
-            }
-        }
-
-        [HarmonyPatch(typeof(UIStarmapPlanet), "_OnLateUpdate")]
-        private class Starmap_PinPlanetColor
-        {
-            //Default to white
-            private static void Prefix(UIStarmapPlanet __instance)
-            {
-                Text nameText = Traverse.Create((object)__instance).Field("nameText").GetValue<Text>();
-                nameText.color = Color.white;
-            }
-
-            private static void Postfix(UIStarmapPlanet __instance)
-            {
-                Text nameText = Traverse.Create((object)__instance).Field("nameText").GetValue<Text>();
-               
-                if (navPin.target != null && 
-                    navPin.target.id != -1 &&                 
-                    __instance.planet.id == navPin.target.id
-                    )
-                    nameText.color = Color.red;
             }
         }
 

@@ -10,55 +10,41 @@ namespace AutoNavigate
     {
         public class Target
         {
-            static public double focusParam;
-            private StarmapStarPlanet __data;
-            public StarmapStarPlanet data
-            {
-                get
-                {
-                    return __data;
-                }
-                private set
-                {
-                    __data = value;
-                }
-            }
+            static public double focusParam = 0.01;
+            private PlanetData planetData = null;
+            private StarData starData = null;
 
-            public Target()
-            {
-                data = new StarmapStarPlanet();
-            }
-
-            public bool IsVaild() => (TargetUIStar != null && TargetStar != null) || TargetPlanet != null;
+            public bool IsVaild() => (TargetStar != null) || TargetPlanet != null;
 
             public void Reset()
             {
-                data.Reset();
+                planetData = null;
+                starData = null;
             }
 
             public void SetTarget(UIStarmapStar star)
             {
-                data.Set(star);
+                if(star.star != null)
+                {
+                    starData = star.star;
+                }
+            }
+
+            public void SetTarget(StarData star)
+            {
+                starData = star;
             }
 
             public void SetTarget(PlanetData planet)
             {
-                data.Set(planet);
+                planetData = planet;
             }
 
             public PlanetData TargetPlanet
             {
                 get
                 {
-                    return data.planet;
-                }
-            }
-
-            public UIStarmapStar TargetUIStar
-            {
-                get
-                {
-                    return data.UIstar;
+                    return planetData;
                 }
             }
 
@@ -66,13 +52,7 @@ namespace AutoNavigate
             {
                 get
                 {
-                    if (data == null)
-                    {
-                        ModDebug.Error("data.UIstar is null");
-                        return null;
-                    }
-
-                    return data.UIstar.star;
+                    return starData;
                 }
             }
 
@@ -143,7 +123,7 @@ namespace AutoNavigate
 
 
         public bool IsCurNavPlanet() => target.TargetPlanet != null;
-        public bool IsCurNavStar() => target.TargetUIStar != null && target.TargetStar != null;
+        public bool IsCurNavStar() =>  target.TargetStar != null;
 
         public Target target;
         public Text modeText;
@@ -292,7 +272,7 @@ namespace AutoNavigate
 
         public bool Arrive(string extraTip = null)
         {
-            string tip = ModText.NavigationModeEnded;
+            string tip = "Navigation Mode Ended".ModText();
 
             if (extraTip != null)
                 tip += ("-" + extraTip);
