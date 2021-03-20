@@ -107,7 +107,7 @@ namespace AutoNavigate
 
             public bool IsLocalStarPlanet()
             {
-                if (GameMain.localStar != null && TargetPlanet.star == GameMain.localStar)
+                if (GameMain.localStar != null && TargetPlanet != null && TargetPlanet.star == GameMain.localStar)
                     return true;
                 else
                     return false;
