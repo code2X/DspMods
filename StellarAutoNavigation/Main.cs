@@ -267,7 +267,7 @@ namespace AutoNavigate
 /// Starmap Indicator
 /// --------------------------
         [HarmonyPatch(typeof(UIStarmap), "OnCursorFunction3Click")]
-        private class UIStarmapOnMouseClick
+        private class OnSetIndicatorAstro
         {
             private static void Prefix(UIStarmap __instance)
             {

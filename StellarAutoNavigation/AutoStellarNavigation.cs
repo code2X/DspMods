@@ -14,7 +14,7 @@ namespace AutoNavigate
             private PlanetData planetData = null;
             private StarData starData = null;
 
-            public bool IsVaild() => (TargetStar != null) || TargetPlanet != null;
+            public bool IsVaild() => (TargetStar != null) || (TargetPlanet != null);
 
             public void Reset()
             {
@@ -32,11 +32,13 @@ namespace AutoNavigate
 
             public void SetTarget(StarData star)
             {
+                Reset();
                 starData = star;
             }
 
             public void SetTarget(PlanetData planet)
             {
+                Reset(); 
                 planetData = planet;
             }
 
@@ -66,6 +68,23 @@ namespace AutoNavigate
                 return (dirL - dirR).magnitude < focusParam;
             }
 
+            public VectorLF3 GetPos()
+            {
+                if(TargetPlanet != null)
+                {
+                    return TargetPlanet.uPosition;
+                }
+                else if(TargetStar != null)
+                {
+                    return TargetStar.uPosition;
+                }
+                else
+                {
+                    ModDebug.Error("GetTartgetPos While No Target!!!");
+                    return new VectorLF3(0.0, 0.0, 0.0);
+                }
+            }
+
             public VectorLF3 GetDir(AutoStellarNavigation __this, Player __instance)
             {
                 VectorLF3 dir = VectorLF3.zero;
@@ -80,10 +99,18 @@ namespace AutoNavigate
                 }
                 else
                 {
-                    ModDebug.Error("GetDir While No Navigate!!!");
+                    ModDebug.Error("GetDir While No Target!!!");
                 }
 
                 return dir;
+            }
+
+            public bool IsLocalStarPlanet()
+            {
+                if (GameMain.localStar != null && TargetPlanet.star == GameMain.localStar)
+                    return true;
+                else
+                    return false;
             }
         }
 
@@ -272,7 +299,7 @@ namespace AutoNavigate
 
         public bool Arrive(string extraTip = null)
         {
-            string tip = "Navigation Mode Ended".ModText();
+            string tip = "导航模式结束".ModText();
 
             if (extraTip != null)
                 tip += ("-" + extraTip);
@@ -530,9 +557,11 @@ namespace AutoNavigate
             {
                 double distance = (target.TargetPlanet.uPosition - __instance.player.uPosition).magnitude;
 
-                if (enableLocalWrap && 
-                    distance > localWrapMinDistance && 
+                if ((enableLocalWrap &&
+                    distance > localWrapMinDistance &&
                     distance > (target.TargetPlanet.realRadius + longNavUncoverRange))
+                    ||
+                    target.IsLocalStarPlanet() == false)
                 {                  
                     PlanetData localPlanet = GameMain.localPlanet;
                     if (localPlanet != null && 
@@ -629,10 +658,10 @@ namespace AutoNavigate
 #endif
                     return;
                 }
-                else if (IsCurNavPlanet())
+                else if (IsCurNavPlanet() && target.IsLocalStarPlanet() == true)
                 {
 #if DEBUG
-                    ModDebug.Log("No Wrap Chance SpeedUp");
+                    ModDebug.Log("Local Planet Nav No Wrap Chance SpeedUp");
 #endif
                     Sail.TrySpeedUp(this, __instance);
                     return;
